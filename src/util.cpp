@@ -46,18 +46,6 @@ filepath & pass that to a wide stat. Or stat it with a utf8 filepath on Unixen &
 win32 (stripped utf8).
 ----------------------*/
 uint64_t findFileSize(const char *utf8_filepath) {
-#if defined(_WIN32) && !defined(__CYGWIN__)
-  if (IsUnicodeWinOS() && UnicodeOutputStatus == WIN32_UTF16) {
-    wchar_t *utf16_filepath = Convert_multibyteUTF8_to_wchar(utf8_filepath);
-
-    struct _stati64 fileStats;
-    _wstati64(utf16_filepath, &fileStats);
-
-    free(utf16_filepath);
-    utf16_filepath = NULL;
-    return fileStats.st_size;
-  } else
-#endif
   {
     struct stat fileStats;
     stat(utf8_filepath, &fileStats);
@@ -82,22 +70,6 @@ Unixen.
 ----------------------*/
 FILE *APar_OpenFile(const char *utf8_filepath, const char *file_flags) {
   FILE *aFile = NULL;
-#if defined(_WIN32) && !defined(__CYGWIN__)
-  if (IsUnicodeWinOS() && UnicodeOutputStatus == WIN32_UTF16) {
-    wchar_t *Lfile_flags = (wchar_t *)malloc(sizeof(wchar_t) * 4);
-    memset(Lfile_flags, 0, sizeof(wchar_t) * 4);
-    mbstowcs(Lfile_flags, file_flags, strlen(file_flags));
-
-    wchar_t *utf16_filepath = Convert_multibyteUTF8_to_wchar(utf8_filepath);
-
-    aFile = _wfopen(utf16_filepath, Lfile_flags);
-
-    free(Lfile_flags);
-    Lfile_flags = NULL;
-    free(utf16_filepath);
-    utf16_filepath = NULL;
-  } else
-#endif
   {
     aFile = fopen(utf8_filepath, file_flags);
   }
@@ -155,81 +127,9 @@ void TestFileExistence(const char *filePath, bool errorOut) {
   }
 }
 
-#if defined(_WIN32)
-
-///////////////////////////////////////////////////////////////////////////////////////
-//                                Win32 functions //
-///////////////////////////////////////////////////////////////////////////////////////
-
-#ifndef HAVE_FSEEKO
-
-int fseeko(FILE *stream, uint64_t pos, int whence) { // only using SEEK_SET here
-  if (whence == SEEK_SET) {
-    fpos_t fpos = pos;
-    return fsetpos(stream, &fpos);
-  } else {
-    return -1;
-  }
-  return -1;
-}
-
-#endif
-
-/*----------------------
-APar_OpenFileWin32
-        utf8_filepath - a pointer to a string (possibly utf8) of the full path
-to the file
-        ... - passed on to the CreateFile function
-
-        take an ascii/utf8 filepath (which if under a unicode enabled Win32 OS
-was already converted from utf16le to utf8 at program start) and test if AP is
-running on a unicode enabled Win32 OS. If it is, convert the utf8 filepath to a
-utf16 (native-endian) filepath & pass that to a wide CreateFile with the 8-bit
-file flags changed to 16-bit file flags, otherwise pass the utf8 filepath to an
-ANSI CreateFile
-----------------------*/
-HANDLE APar_OpenFileWin32(const char *utf8_filepath,
-                          DWORD dwDesiredAccess,
-                          DWORD dwShareMode,
-                          LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-                          DWORD dwCreationDisposition,
-                          DWORD dwFlagsAndAttributes,
-                          HANDLE hTemplateFile) {
-  if (IsUnicodeWinOS() && UnicodeOutputStatus == WIN32_UTF16) {
-    HANDLE hFile = NULL;
-    wchar_t *utf16_filepath = Convert_multibyteUTF8_to_wchar(utf8_filepath);
-    hFile = CreateFileW(utf16_filepath,
-                        dwDesiredAccess,
-                        dwShareMode,
-                        lpSecurityAttributes,
-                        dwCreationDisposition,
-                        dwFlagsAndAttributes,
-                        hTemplateFile);
-    free(utf16_filepath);
-    return hFile;
-  } else {
-    return CreateFileA(utf8_filepath,
-                       dwDesiredAccess,
-                       dwShareMode,
-                       lpSecurityAttributes,
-                       dwCreationDisposition,
-                       dwFlagsAndAttributes,
-                       hTemplateFile);
-  }
-}
-
-#endif
-
 // http://www.flipcode.com/articles/article_advstrings01.shtml
 bool IsUnicodeWinOS() {
-#if defined(_WIN32)
-  OSVERSIONINFOW os;
-  memset(&os, 0, sizeof(OSVERSIONINFOW));
-  os.dwOSVersionInfoSize = sizeof(OSVERSIONINFOW);
-  return (GetVersionExW(&os) != 0);
-#else
   return false;
-#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -403,8 +303,8 @@ uint16_t PackLanguage(
   // support a lot of those 3 letter language codes above on that page. for
   // example 'zul' blocks *all* metadata from showing up. 'fre' is a no-no, but
   // 'fra' is fine. then, the spec calls for all strings to be null terminated.
-  // So then why does a '© 2005' (with a NULL at the end) show up as '© 2005' in
-  // 'pol', but '© 2005 ?' in 'fas' Farsi? Must be Apple's implementation,
+  // So then why does a 'ï¿½ 2005' (with a NULL at the end) show up as 'ï¿½ 2005' in
+  // 'pol', but 'ï¿½ 2005 ?' in 'fas' Farsi? Must be Apple's implementation,
   // because the files are identical except for the uint16_t lang setting.
 
   uint16_t packed_language = 0;
@@ -604,24 +504,11 @@ char *APar_extract_UTC(uint64_t total_secs) {
 }
 
 uint32_t APar_get_mpeg4_time() {
-#if defined(_WIN32) && !defined(__CYGWIN__)
-  FILETIME file_time;
-  uint64_t wintime = 0;
-  GetSystemTimeAsFileTime(&file_time);
-  wintime =
-      (((uint64_t)file_time.dwHighDateTime << 32) | file_time.dwLowDateTime) /
-      10000000;
-  wintime -= 9561628800ULL;
-  return (uint32_t)wintime;
-
-#else
   uint32_t current_time_in_seconds = 0;
   struct timeval tv;
   gettimeofday(&tv, NULL);
   current_time_in_seconds = tv.tv_sec;
   return current_time_in_seconds + 2082844800;
-
-#endif
   return 0;
 }
 
@@ -665,15 +552,9 @@ Convert_multibyteUTF16_to_wchar(char *input_unicode,
   wmemset(utf16_data, 0, glyph_length + 1);
 
   for (size_t i = 0; i < glyph_length; i++) {
-#if defined(__ppc__) || defined(__ppc64__)
-    utf16_data[i] = (input_unicode[2 * i + BOM_mark_bytes] & 0x00ff) << 8 |
-                    (input_unicode[2 * i + 1 + BOM_mark_bytes])
-                        << 0; //+2 & +3 to skip over the BOM
-#else
     utf16_data[i] = (input_unicode[2 * i + BOM_mark_bytes] << 8) |
                     ((input_unicode[2 * i + 1 + BOM_mark_bytes]) & 0x00ff)
                         << 0; //+2 & +3 to skip over the BOM
-#endif
   }
   return utf16_data;
 }
@@ -792,32 +673,15 @@ uint32_t skipNULLterm(char *in_string, uint8_t encodingFlag, uint32_t max_len) {
 ///////////////////////////////////////////////////////////////////////////////////////
 
 uint16_t UInt16FromBigEndian(const char *string) {
-#if defined(__ppc__) || defined(__ppc64__)
-  uint16_t test;
-  memcpy(&test, string, 2);
-  return test;
-#else
   return (((string[0] & 0xff) << 8) | (string[1] & 0xff) << 0);
-#endif
 }
 
 uint32_t UInt32FromBigEndian(const char *string) {
-#if defined(__ppc__) || defined(__ppc64__)
-  uint32_t test;
-  memcpy(&test, string, 4);
-  return test;
-#else
   return (((string[0] & 0xff) << 24) | ((string[1] & 0xff) << 16) |
           ((string[2] & 0xff) << 8) | (string[3] & 0xff) << 0);
-#endif
 }
 
 uint64_t UInt64FromBigEndian(const char *string) {
-#if defined(__ppc__) || defined(__ppc64__)
-  uint64_t test;
-  memcpy(&test, string, 8);
-  return test;
-#else
   return (uint64_t)(string[0] & 0xff) << 54 |
          (uint64_t)(string[1] & 0xff) << 48 |
          (uint64_t)(string[2] & 0xff) << 40 |
@@ -825,7 +689,6 @@ uint64_t UInt64FromBigEndian(const char *string) {
          (uint64_t)(string[4] & 0xff) << 24 |
          (uint64_t)(string[5] & 0xff) << 16 |
          (uint64_t)(string[6] & 0xff) << 8 | (uint64_t)(string[7] & 0xff) << 0;
-#endif
 }
 
 void UInt16_TO_String2(uint16_t snum, char *data) {

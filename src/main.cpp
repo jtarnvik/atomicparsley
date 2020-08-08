@@ -112,10 +112,6 @@
 
 #define OPT_OverWrite 'W'
 
-#if defined(_WIN32)
-#define OPT_PreserveTimeStamps 0xCA
-#endif
-
 #define ISO_Copyright 0xAA
 
 #define _3GP_Title 0xAB
@@ -487,20 +483,6 @@ static const char *longHelp_text =
 
 static const char *fileLevelHelp_text =
     "AtomicParsley help page for general & file level options.\n"
-#if defined(_WIN32)
-#ifndef __CYGWIN__
-    "  Note: you can change the input/output behavior to raw 8-bit utf8 if the "
-    "program name\n"
-    "        is appended with \"-utf8\". AtomicParsley-utf8.exe will have "
-    "problems with files/\n"
-    "        folders with unicode characters in given paths.\n"
-#else
-    "  Note: you can change the input/output behavior for MCDI functions to "
-    "raw 8-bit utf8\n"
-    "        if the program name is appended with \"-utf8\".\n"
-#endif
-    "\n"
-#endif
     "--------------------------------------------------------------------------"
     "----------------------\n"
     " Atom reading services:\n"
@@ -577,13 +559,6 @@ static const char *fileLevelHelp_text =
     "                                      If possible, padding will be used "
     "to update without a full rewrite.\n"
     "\n"
-#if defined(_WIN32)
-    "  --preserveTime                      Will overwrite the original file in "
-    "place (--overWrite forced),\n"
-    "                                      but will also keep the original "
-    "file's timestamps intact.\n"
-    "\n"
-#endif
     "  --DeepScan                          Parse areas of the file that are "
     "normally skipped (must be the 3rd arg)\n"
     "  --iPod-uuid                (num)    Place the ipod-required uuid for "
@@ -645,17 +620,10 @@ static const char *fileLevelHelp_text =
     "occur is when the original file\n"
     "  is not optimized and has 'mdat' preceding 'moov'.\n"
     "\n"
-#if defined(_WIN32) && !defined(__CYGWIN__)
-    "Examples:\n"
-    "   c:> SET AP_PADDING=\"DEFAULT_PAD=0\"      or    c:> SET "
-    "AP_PADDING=\"DEFAULT_PAD=3128\"\n"
-    "   c:> SET AP_PADDING=\"DEFAULT_PAD=5128:MIN_PAD=200:MAX_PAD=6049\"\n"
-#else
     "Examples (bash style):\n"
     "   $ export AP_PADDING=\"DEFAULT_PAD=0\"      or    $ export "
     "AP_PADDING=\"DEFAULT_PAD=3128\"\n"
     "   $ export AP_PADDING=\"DEFAULT_PAD=5128:MIN_PAD=200:MAX_PAD=6049\"\n"
-#endif
     "\n"
     "Note: while AtomicParsley is still in the beta stage, the original file "
     "will always remain untouched - \n"
@@ -677,13 +645,8 @@ static const char *fileLevelHelp_text =
     "it by setting the environ-\n"
     " mental preference for AP_PADDING to have DEFAULT_PAD=0\n"
     "\n"
-#if defined(_WIN32) && !defined(__CYGWIN__)
-    "Example:\n"
-    "   c:> SET AP_PADDING=\"DEFAULT_PAD=0\"\n"
-#else
     "Example (bash style):\n"
     "   $ export AP_PADDING=\"DEFAULT_PAD=0\"\n"
-#endif
     "--------------------------------------------------------------------------"
     "--------------------------\n";
 
@@ -1128,7 +1091,6 @@ static const char *ID3Help_text =
     "       images are extracted into the same directory as the source mpeg-4 "
     "file\n"
     "\n"
-#if defined(__APPLE__)
     " Setting MCDI (Music CD Identifier):\n"
     " --ID3Tag MCDI disk4\n"
     "       Information to create this frame is taken directly off an Audio "
@@ -1142,19 +1104,6 @@ static const char *ID3Help_text =
     "          % Device 'disk4' contains cd media\n"
     "          % Good news, device 'disk4' is an Audio CD and can be used for "
     "'MCDI' setting\n"
-#elif defined(__linux__)
-    " Setting MCDI (Music CD Identifier):\n"
-    " --ID3Tag MCDI /dev/hdc\n"
-    "       Information to create this frame is taken directly off an Audio "
-    "CD's TOC. An Audio CD\n"
-    "       must be mounted & present.\n"
-#elif defined(_WIN32)
-    " Setting MCDI (Music CD Identifier):\n"
-    " --ID3Tag MCDI D\n"
-    "       Information to create this frame is taken directly off an Audio "
-    "CD's TOC. The letter after\n"
-    "       \"MCDI\" is the letter of the drive where the CD is present.\n"
-#endif
     ;
 
 void ExtractPaddingPrefs(char *env_padding_prefs) {
@@ -1353,20 +1302,6 @@ int real_main(int argc, char *argv[]) {
     } else if ((strcmp(argv[1], "--longhelp") == 0) ||
                (strcmp(argv[1], "-longhelp") == 0) ||
                (strcmp(argv[1], "-Lh") == 0)) {
-#if defined(_WIN32) && !defined(__CYGWIN__)
-      if (UnicodeOutputStatus == WIN32_UTF16) { // convert the helptext to utf16
-                                                // to preserve \251 characters
-        int help_len = strlen(longHelp_text) + 1;
-        wchar_t *Lhelp_text = (wchar_t *)malloc(sizeof(wchar_t) * help_len);
-        wmemset(Lhelp_text, 0, help_len);
-        UTF8ToUTF16LE((unsigned char *)Lhelp_text,
-                      2 * help_len,
-                      (unsigned char *)longHelp_text,
-                      help_len);
-        APar_unicode_win32Printout(Lhelp_text, (char *)longHelp_text);
-        free(Lhelp_text);
-      } else
-#endif
       {
         fprintf(stdout, "%s", longHelp_text);
       }
@@ -1561,9 +1496,6 @@ int real_main(int argc, char *argv[]) {
       {"output", required_argument, NULL, OPT_OutputFile},
       {"preventOptimizing", 0, NULL, OPT_NoOptimize},
       {"overWrite", 0, NULL, OPT_OverWrite},
-#if defined(_WIN32)
-      {"preserveTime", 0, NULL, OPT_PreserveTimeStamps},
-#endif
       {"ISO-copyright", required_argument, NULL, ISO_Copyright},
 
       {"3gp-title", required_argument, NULL, _3GP_Title},
@@ -4235,14 +4167,6 @@ int real_main(int argc, char *argv[]) {
       break;
     }
 
-#if defined(_WIN32)
-    case OPT_PreserveTimeStamps: {
-      alter_original = true;
-      preserve_timestamps = true;
-      break;
-    }
-#endif
-
     case Meta_dump: {
       APar_ScanAtoms(ISObasemediafile);
       APar_OpenISOBaseMediaFile(ISObasemediafile, true);
@@ -4334,47 +4258,9 @@ int real_main(int argc, char *argv[]) {
 
   if (modified_atoms) {
 
-#if defined(_WIN32)
-    HANDLE hFile, hFileOut;
-    FILETIME createTime, accessTime, writeTime;
-    if (preserve_timestamps == true) {
-      hFile = APar_OpenFileWin32(ISObasemediafile,
-                                 GENERIC_WRITE | GENERIC_READ,
-                                 FILE_SHARE_WRITE | FILE_SHARE_READ,
-                                 NULL,
-                                 OPEN_EXISTING,
-                                 0,
-                                 0);
-      if (hFile != INVALID_HANDLE_VALUE) {
-        GetFileTime(hFile, &createTime, &accessTime, &writeTime);
-        CloseHandle(hFile);
-      } else {
-        fprintf(stdout, "\n Invalid HANDLE!");
-      }
-    }
-#endif
-
     APar_DetermineAtomLengths();
     APar_OpenISOBaseMediaFile(ISObasemediafile, true);
     APar_WriteFile(ISObasemediafile, output_file, alter_original);
-
-#if defined(_WIN32)
-    if (preserve_timestamps == true) {
-
-      hFileOut = APar_OpenFileWin32(ISObasemediafile,
-                                    GENERIC_WRITE | GENERIC_READ,
-                                    FILE_SHARE_WRITE | FILE_SHARE_READ,
-                                    NULL,
-                                    OPEN_EXISTING,
-                                    0,
-                                    0);
-
-      if (hFileOut != INVALID_HANDLE_VALUE) {
-        SetFileTime(hFileOut, &createTime, &accessTime, &writeTime);
-        CloseHandle(hFileOut);
-      }
-    }
-#endif
 
     if (!alter_original) {
       // The file was opened orignally as read-only; when it came time to
@@ -4392,91 +4278,4 @@ int real_main(int argc, char *argv[]) {
   return 0;
 }
 
-#if defined(_WIN32)
-
-#if !defined(__CYGWIN__)
-
-int wmain(int argc, wchar_t *arguments[]) {
-  int return_val = 0;
-  uint16_t name_len = wcslen(arguments[0]);
-  if (name_len >= 9 &&
-      _wcsicmp(arguments[0] + (name_len - 9), L"-utf8.exe") == 0) {
-    UnicodeOutputStatus = UNIVERSAL_UTF8;
-  } else {
-    UnicodeOutputStatus = WIN32_UTF16;
-  }
-
-  char **argv = (char **)calloc(argc + 1, sizeof(char *));
-
-  // for native Win32 & full unicode support (well, cli arguments anyway),
-  // take whatever 16bit unicode windows gives (utf16le), and convert
-  // EVERYTHING that is sends to utf8; use those utf8 strings (mercifully
-  // subject to familiar standby's like strlen) to pass around the program
-  // like getopt_long to get cli options; convert from utf8 filenames as
-  // required for unicode filename support on Windows using wide file
-  // functions.
-  for (int z = 0; z < argc; z++) {
-    uint32_t wchar_length = wcslen(arguments[z]) + 1;
-    argv[z] = (char *)malloc(sizeof(char) * 8 * wchar_length);
-    memset(argv[z], 0, 8 * wchar_length);
-    if (UnicodeOutputStatus == WIN32_UTF16) {
-      UTF16LEToUTF8((unsigned char *)argv[z],
-                    8 * wchar_length,
-                    (unsigned char *)arguments[z],
-                    wchar_length * 2);
-    } else {
-      strip_bogusUTF16toRawUTF8((unsigned char *)argv[z],
-                                8 * wchar_length,
-                                arguments[z],
-                                wchar_length);
-    }
-  }
-
-  argv[argc] = NULL;
-
-  return_val = real_main(argc, argv);
-
-  for (int free_cnt = 0; free_cnt < argc; free_cnt++) {
-    free(argv[free_cnt]);
-    argv[free_cnt] = NULL;
-  }
-
-  free(argv);
-  argv = NULL;
-
-  return return_val;
-}
-
-#ifdef __MINGW32__
-
-int main() {
-  int argc;
-  wchar_t **argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-  return wmain(argc, argv);
-}
-
-#endif
-
-#else // defined __CYGWIN__
-
-int main(int argc, char *argv[]) {
-  size_t name_len = strlen(argv[0]);
-  if (name_len >= 5 && (strcmp(argv[0] + (name_len - 5), "-utf8") == 0 ||
-                        strcmp(argv[0] + (name_len - 5), "-UTF8") == 0)) {
-    UnicodeOutputStatus = UNIVERSAL_UTF8;
-  } else {
-    UnicodeOutputStatus = WIN32_UTF16;
-  }
-  return real_main(argc, argv);
-}
-
-#endif
-
-#else
-
 int main(int argc, char *argv[]) { return real_main(argc, argv); }
-
-#endif
-
-/* vim:ts=4:sw=4:et:
- */

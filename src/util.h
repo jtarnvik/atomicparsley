@@ -15,30 +15,16 @@
     cannot, write to the Free Software Foundation, 59 Temple Place
     Suite 330, Boston, MA 02111-1307, USA.  Or www.fsf.org
 
-    Copyright ©2006-2007 puck_lock
+    Copyright ï¿½2006-2007 puck_lock
     with contributions from others; see the CREDITS file
                                                                                                                                                                                                                                                                                 */
 //==================================================================//
 #include "ap_types.h"
 
-#if defined(__ppc__) || defined(__ppc64__)
-#define SWAP16(x) (x)
-#define SWAP32(x) (x)
-#else
 #define SWAP16(x) ((((x)&0xFF) << 8) | (((x) >> 8) & 0xFF))
 #define SWAP32(x)                                                              \
   ((((x)&0xFF) << 24) | (((x) >> 24) & 0xFF) | (((x)&0x0000FF00) << 8) |       \
    (((x)&0x00FF0000) >> 8))
-#endif
-
-#if defined(_WIN32) && defined(_MSC_VER)
-#undef HAVE_GETOPT_H
-#undef HAVE_LROUNDF
-#undef HAVE_STRSEP
-//#undef HAVE_ZLIB_H //comment this IN when compiling on win32 withOUT zlib
-// present #define HAVE_ZLIB_H 1 //and comment this OUT
-#undef HAVE_SRANDDEV
-#endif
 
 #define MAXTIME_32 6377812095ULL
 
@@ -47,18 +33,6 @@ FILE *APar_OpenFile(const char *utf8_filepath, const char *file_flags);
 FILE *APar_OpenISOBaseMediaFile(const char *file, bool open); // openSomeFile
 void TestFileExistence(const char *filePath, bool errorOut);
 
-#if defined(_WIN32)
-#ifndef HAVE_FSEEKO
-int fseeko(FILE *stream, uint64_t pos, int whence);
-#endif
-HANDLE APar_OpenFileWin32(const char *utf8_filepath,
-                          DWORD dwDesiredAccess,
-                          DWORD dwShareMode,
-                          LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-                          DWORD dwCreationDisposition,
-                          DWORD dwFlagsAndAttributes,
-                          HANDLE hTemplateFile);
-#endif
 bool IsUnicodeWinOS();
 
 const char *APar_strferror(FILE *f);

@@ -18,25 +18,11 @@
     cannot, write to the Free Software Foundation, 59 Temple Place
     Suite 330, Boston, MA 02111-1307, USA.  Or www.fsf.org
 
-    Copyright ©2005-2007 puck_lock
+    Copyright ï¿½2005-2007 puck_lock
     with contributions from others; see the CREDITS file
                                                                    */
 //==================================================================//
 
-#if defined HAVE_WINDOWS_H && !defined _WIN32
-#define _WIN32
-#endif
-
-#ifdef _WIN32
-#ifndef _UNICODE
-#define _UNICODE
-#endif
-#if defined(_MSC_VER)
-#define strncasecmp _strnicmp
-#define _CRT_SECURE_NO_WARNINGS
-#pragma warning(disable : 4244) // int64_t assignments to int32_t etc.
-#endif
-#endif
 
 #define __STDC_LIMIT_MACROS
 #define __STDC_FORMAT_MACROS
@@ -50,9 +36,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifndef _WIN32
 #include <sys/time.h>
-#endif
+
 #include <errno.h>
 #include <math.h>
 #include <time.h>
@@ -60,43 +45,16 @@
 #include <inttypes.h>
 #include <stddef.h>
 #include <stdint.h>
-#ifndef _WIN32
 #include <fcntl.h>
 #include <sys/ioctl.h>
-#endif
-#ifdef __linux__
-#include <linux/cdrom.h>
-#include <sys/mount.h>
-#include <sys/param.h>
-#endif
-#ifdef _WIN32
-// Don't break std::min!
-#define NOMINMAX
-#include <windows.h>
-#endif
+
 #include <wchar.h>
-#ifndef _WIN32
 #include <sys/stat.h>
 #include <unistd.h>
-#endif
-#ifdef _WIN32
-#include <io.h>
-#endif
 
 #include <signal.h>
-#ifndef _WIN32
 #include <getopt.h>
-#else
-#include "extras/getopt.h"
-#endif
 
-#ifndef PRIu64
-#ifdef _WIN32
-#define PRIu64 "I64u"
-#else
-#define PRIu64 "llu"
-#endif
-#endif
 #ifndef PRIu32
 #define PRIu32 "u"
 #endif
@@ -104,11 +62,7 @@
 #define PRIx32 "x"
 #endif
 #ifndef SCNu64
-#ifdef _WIN32
-#define SCNu64 "I64u"
-#else
 #define SCNu64 "llu"
-#endif
 #endif
 #ifndef SCNu32
 #define SCNu32 "u"

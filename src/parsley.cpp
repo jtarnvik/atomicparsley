@@ -61,11 +61,7 @@ int metadata_style = UNDEFINED_STYLE;
 bool deep_atom_scan = false;
 
 uint64_t max_buffer =
-#ifdef __linux__
-    0.5 /* splice() allows us to use less buffer space */
-#else
     10
-#endif
     * 1024 * 1024;
 
 uint64_t bytes_before_mdat = 0;
@@ -88,9 +84,7 @@ char *file_progress_buffer = (char *)calloc(
     sizeof(char) *
         (max_display_width + 50)); //+50 for any overflow in "%100", or "|"
 
-#if defined(__APPLE__)
 struct PicPrefs myPicturePrefs;
-#endif
 bool parsed_prefs = false;
 char *twenty_byte_buffer = (char *)malloc(sizeof(char) * 20);
 
@@ -109,40 +103,7 @@ uint8_t forced_suffix_type = NO_TYPE_FORCING;
 
 void ShowVersionInfo() {
 
-#if defined(_WIN32)
-  char *unicode_enabled;
-  if (UnicodeOutputStatus == WIN32_UTF16) {
-#ifndef __CYGWIN__
-    unicode_enabled = "(utf16)";
-#else
-    unicode_enabled = "(utf8 with utf16 CD access)";
-#endif
-
-    // its utf16 in the sense that any text entering on a modern Win32 system
-    // enters as utf16le - but gets converted immediately after AP.exe starts
-    // to utf8 all arguments, strings, filenames, options are sent around as
-    // utf8. For modern Win32 systems, filenames get converted to utf16 for
-    // output as needed.  Any strings to be set as utf16 in 3gp assets are
-    // converted to utf16be as needed (true for all OS implementations).
-    // Printing out to the console should be utf8.
-
-  } else if (UnicodeOutputStatus == UNIVERSAL_UTF8) {
-#ifndef __CYGWIN__
-    unicode_enabled = "(raw utf8)";
-#else
-    unicode_enabled = "(utf8 with raw utf8 CD access)";
-#endif
-
-    // utf8 in the sense that any text entered had its utf16 upper byte
-    // stripped and reduced to (unchecked) raw utf8 for utilities that work in
-    // utf8. Any unicode (utf16) filenames were clobbered in that processes are
-    // invalid now. Any intermediate folder with unicode in it will now likely
-    // cause an error of some sort.
-  }
-
-#else
 #define unicode_enabled "(utf8)"
-#endif
 
   fprintf(stdout,
           "AtomicParsley version: %s %s %s\n",
@@ -226,7 +187,6 @@ void APar_FreeMemory() {
 //                        Picture Preferences Functions //
 ///////////////////////////////////////////////////////////////////////////////////////
 
-#if defined(__APPLE__)
 PicPrefs APar_ExtractPicPrefs(char *env_PicOptions) {
   if (!parsed_prefs) {
 
@@ -308,7 +268,6 @@ PicPrefs APar_ExtractPicPrefs(char *env_PicOptions) {
     myPicturePrefs.force_dimensions = true;
   return myPicturePrefs;
 }
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////
 //                            Locating/Finding Atoms //
@@ -2740,7 +2699,7 @@ APar_MetaData_atomGenre_Set
 
     genre is special in that it gets carried on 2 atoms. A standard genre (as
 listed in ID3v1GenreList) is represented as a number on a 'gnre' atom any value
-other than those, and the genre is placed as a string onto a '©gen' atom. Only
+other than those, and the genre is placed as a string onto a 'ï¿½gen' atom. Only
 one or the other can be present. So if atomPayload is a non-NULL value, first
 try and match the genre into the ID3v1GenreList standard genres. Try to remove
 the other type of genre atom, then find or create the new genre atom and put the
@@ -2750,8 +2709,8 @@ void APar_MetaData_atomGenre_Set(const char *atomPayload) {
   if (metadata_style == ITUNES_STYLE) {
     const char *standard_genre_atom = "moov.udta.meta.ilst.gnre";
     const char *std_genre_data_atom = "moov.udta.meta.ilst.gnre.data";
-    const char *custom_genre_atom = "moov.udta.meta.ilst.©gen";
-    const char *cstm_genre_data_atom = "moov.udta.meta.ilst.©gen.data";
+    const char *custom_genre_atom = "moov.udta.meta.ilst.ï¿½gen";
+    const char *cstm_genre_data_atom = "moov.udta.meta.ilst.ï¿½gen.data";
 
     if (strlen(atomPayload) == 0) {
       APar_RemoveAtom(std_genre_data_atom,
@@ -2769,7 +2728,7 @@ void APar_MetaData_atomGenre_Set(const char *atomPayload) {
       modified_atoms = true;
 
       if (genre_number != 0) {
-        // first find if a custom genre atom ("©gen") exists; erase the
+        // first find if a custom genre atom ("ï¿½gen") exists; erase the
         // custom-string genre atom in favor of the standard genre atom
 
         AtomicInfo *verboten_genre_atom =
@@ -2777,7 +2736,7 @@ void APar_MetaData_atomGenre_Set(const char *atomPayload) {
 
         if (verboten_genre_atom != NULL) {
           if (strlen(verboten_genre_atom->AtomicName) > 0) {
-            if (strncmp(verboten_genre_atom->AtomicName, "©gen", 4) == 0) {
+            if (strncmp(verboten_genre_atom->AtomicName, "ï¿½gen", 4) == 0) {
               APar_RemoveAtom(cstm_genre_data_atom, VERSIONED_ATOM, 0);
             }
           }
@@ -2834,7 +2793,7 @@ void APar_MetaData_atomLyrics_Set(const char *lyricsPath) {
     modified_atoms = true;
 
     AtomicInfo *lyricsData_atom =
-        APar_FindAtom("moov.udta.meta.ilst.©lyr.data", true, VERSIONED_ATOM, 0);
+        APar_FindAtom("moov.udta.meta.ilst.ï¿½lyr.data", true, VERSIONED_ATOM, 0);
     APar_MetaData_atom_QuickInit(
         lyricsData_atom->AtomicNumber, AtomFlags_Data_Text, 0, file_len + 1);
 
@@ -2921,10 +2880,8 @@ void APar_MetaData_atomArtwork_Set(const char *artworkPath,
           APar_FindAtom(artwork_atom, true, SIMPLE_ATOM, 0);
       AtomicInfo sample_data_atom = {0};
 
-#if defined(__APPLE__)
       // used on Darwin adding a 2nd image (the original)
       short parent_atom = desiredAtom->AtomicNumber;
-#endif
 
       APar_CreateSurrogateAtom(
           &sample_data_atom, "data", 6, VERSIONED_ATOM, 0, NULL, 0);
@@ -2933,7 +2890,6 @@ void APar_MetaData_atomArtwork_Set(const char *artworkPath,
           desiredAtom,
           APar_FindLastChild_of_ParentAtom(desiredAtom->AtomicNumber));
 
-#if defined(__APPLE__)
       // determine if any picture preferences will impact the picture file in
       // any way
       myPicturePrefs = APar_ExtractPicPrefs(env_PicOptions);
@@ -2943,7 +2899,7 @@ void APar_MetaData_atomArtwork_Set(const char *artworkPath,
       if (ResizeGivenImage(artworkPath, myPicturePrefs, resized_filepath)) {
         APar_MetaData_atomArtwork_Init(desiredAtom->AtomicNumber,
                                        resized_filepath);
-
+    
         if (myPicturePrefs.addBOTHpix) {
           // create another sparse atom to hold the new image data
           desiredAtom = APar_CreateSparseAtom(
@@ -2960,11 +2916,6 @@ void APar_MetaData_atomArtwork_Set(const char *artworkPath,
       }
       free(resized_filepath);
       resized_filepath = NULL;
-#else
-      // perhaps some libjpeg based resizing/modification for non-Mac OS X based
-      // platforms
-      APar_MetaData_atomArtwork_Init(desiredAtom->AtomicNumber, artworkPath);
-#endif
     }
     APar_FlagMovieHeader();
   } ////end if (metadata_style == ITUNES_STYLE)
@@ -4362,12 +4313,6 @@ bool APar_Readjust_TFHD_fragment_atom(uint64_t mdat_position,
   if (parsedAtoms[tfhd_number].AtomicVerFlags & 0x01) {
     // seems the atomflags suggest bitpacking, but the spec doesn't specify it;
     // if the 1st bit is set...
-#if 0 /* not used */
-		memset(tfhd_atomFlags_scrap, 0, 10);
-		memcpy(tfhd_atomFlags_scrap, parsedAtoms[tfhd_number].AtomicData, 4);
-
-		uint32_t track_ID = UInt32FromBigEndian(tfhd_atomFlags_scrap); //unused
-#endif
     uint64_t tfhd_offset =
         UInt64FromBigEndian(parsedAtoms[tfhd_number].AtomicData + 4);
 
@@ -5572,10 +5517,6 @@ void APar_DeriveNewPath(const char *filePath,
 
   } else if (output_type == -1) { // make the output file invisible by prefacing
                                   // the filename with '.'
-#if defined(_WIN32) && !defined(__CYGWIN__)
-    memcpy(temp_path, filePath, base_len);
-    memcpy(temp_path + base_len, file_kind, strlen(file_kind));
-#else
     file_name = strrchr(filePath, '/');
     if (file_name != NULL) {
       file_name_len = strlen(file_name);
@@ -5595,7 +5536,6 @@ void APar_DeriveNewPath(const char *filePath,
            (relative_path ? file_name : file_name + 1),
            file_name_len - strlen(suffix) - 1);
     memcpy(temp_path + strlen(temp_path), file_kind, strlen(file_kind));
-#endif
   }
 
   if (random_filename) {
@@ -5719,14 +5659,8 @@ void APar_MergeTempFile(FILE *dest_file,
       APar_readX(buffer, src_file, file_pos, max_buffer);
 
       // fseek(dest_file, dest_position + file_pos, SEEK_SET);
-#if defined(_WIN32)
-      fpos_t file_offset = dest_position + file_pos;
-#elif defined(__GLIBC__)
-      fpos_t file_offset = {0};
-      file_offset.__pos = dest_position + file_pos;
-#else
       off_t file_offset = dest_position + file_pos;
-#endif
+
       fsetpos(dest_file, &file_offset);
       fwrite(buffer, max_buffer, 1, dest_file);
       file_pos += max_buffer;
@@ -5734,14 +5668,7 @@ void APar_MergeTempFile(FILE *dest_file,
     } else {
       APar_readX(buffer, src_file, file_pos, src_file_size - file_pos);
       // fprintf(stdout, "buff starts with %s\n", buffer+4);
-#if defined(_WIN32)
-      fpos_t file_offset = dest_position + file_pos;
-#elif defined(__GLIBC__)
-      fpos_t file_offset = {0};
-      file_offset.__pos = dest_position + file_pos;
-#else
       off_t file_offset = dest_position + file_pos;
-#endif
       fsetpos(dest_file, &file_offset);
       fwrite(buffer, src_file_size - file_pos, 1, dest_file);
       file_pos += src_file_size - file_pos;
@@ -5749,95 +5676,14 @@ void APar_MergeTempFile(FILE *dest_file,
     }
   }
   if (dynUpd.optimization_flags & MEDIADATA__PRECEDES__MOOV) {
-#if defined(_WIN32) && !defined(__CYGWIN__)
-    fflush(dest_file);
-    SetEndOfFile((HANDLE)_get_osfhandle(_fileno(dest_file)));
-#else
     if (ftruncate(fileno(dest_file), src_file_size + dest_position) == -1) {
       perror("Failed to truncate file: ");
       exit(1);
     }
-#endif
   }
   return;
 }
 
-#ifdef __linux__
-/* use kernel provided zero-copy interface to improve throughput
- * around the data passthru portions of our operation; no sense
- * copying multiple GB of data around in memory if we can avoid it */
-uint64_t splice_copy(int sfd,
-                     int ofd,
-                     uint64_t block_size,
-                     uint64_t src_offset,
-                     uint64_t dest_offset,
-                     uint64_t tally) {
-  int pfd[2];
-  int res;
-  uint64_t lim = LONG_MAX;
-  loff_t spos = src_offset;
-  loff_t dpos = dest_offset;
-  long didread;
-  long didwrite;
-  uint64_t bytes_written = 0;
-
-  res = pipe(pfd);
-  if (res < 0) {
-    return 0;
-  }
-
-  while (block_size) {
-    long toread = std::min(block_size, lim);
-
-    /* splice source data into pipe.
-     * This will typically be 64k at a time */
-    didread =
-        splice(sfd, &spos, pfd[1], NULL, toread, SPLICE_F_MORE | SPLICE_F_MOVE);
-
-    if (didread <= 0) {
-      if (errno == EINVAL || errno == ENOSYS) {
-        /* splice is not supported by source */
-        break;
-      }
-      fprintf(stderr,
-              "splice(read): %ld of %lu (%s)\n",
-              didread,
-              toread,
-              strerror(errno));
-      break;
-    }
-
-    block_size -= didread;
-
-    while (didread > 0) {
-      /* splice from pipe into dest */
-      didwrite = splice(
-          pfd[0], NULL, ofd, &dpos, didread, SPLICE_F_MORE | SPLICE_F_MOVE);
-
-      if (didwrite <= 0) {
-        if (errno == EINVAL || errno == ENOSYS) {
-          /* splice is not supported by dest */
-          break;
-        }
-        fprintf(stderr,
-                "splice(write): %ld of %lu (%s)\n",
-                didwrite,
-                didread,
-                strerror(errno));
-        break;
-      }
-
-      bytes_written += didwrite;
-      didread -= didwrite;
-    }
-    APar_ShellProgressBar(tally + bytes_written);
-  }
-
-  close(pfd[0]);
-  close(pfd[1]);
-  return bytes_written;
-}
-#endif
 
 uint64_t block_copy(FILE *source_file,
                     FILE *out_file,
@@ -5850,23 +5696,6 @@ uint64_t block_copy(FILE *source_file,
   uint64_t bytes_written = 0;
   size_t didread;
   size_t didwrite;
-
-#ifdef __linux__
-  if (block_size > 65536) {
-    fflush(out_file);
-
-    bytes_written = splice_copy(fileno(source_file),
-                                fileno(out_file),
-                                block_size,
-                                src_offset,
-                                dest_offset,
-                                tally);
-
-    if (bytes_written != 0) {
-      return bytes_written;
-    }
-  }
-#endif
 
   fseeko(source_file, src_offset, SEEK_SET);
   fseeko(out_file, dest_offset, SEEK_SET);
@@ -6208,36 +6037,16 @@ void APar_WriteFile(const char *ISObasemediafile,
                        NULL); // APar_DeriveNewPath(ISObasemediafile,
                               // temp_file_name, -1, "-data-", NULL);
     temp_file = APar_OpenFile(temp_file_name, "wb");
-#if defined(_WIN32) && !defined(__CYGWIN__)
-    char *invisi_command = (char *)malloc(sizeof(char) * 2 * MAXPATHLEN);
-    sprintf(invisi_command, "ATTRIB +S +H \"%s\"", temp_file_name);
-
-    if (IsUnicodeWinOS() && UnicodeOutputStatus == WIN32_UTF16) {
-      wchar_t *invisi_command_long =
-          Convert_multibyteUTF8_to_wchar(invisi_command);
-
-      _wsystem(invisi_command_long);
-
-      free(invisi_command_long);
-      invisi_command_long = NULL;
-    } else {
-      system(invisi_command);
-    }
-    free(invisi_command);
-    invisi_command = NULL;
-#endif
 
   } else if (!outfile) {
     APar_DeriveNewPath(ISObasemediafile, temp_file_name, 0, "-temp-", NULL);
     temp_file = APar_OpenFile(temp_file_name, "wb");
 
-#if defined(__APPLE__)
     APar_SupplySelectiveTypeCreatorCodes(
         ISObasemediafile,
         temp_file_name,
         forced_suffix_type); // provide type/creator codes for ".mp4" for
                              // randomly named temp files
-#endif
 
   } else {
     // case-sensitive compare means "The.m4a" is different from "THe.m4a"; on
@@ -6251,24 +6060,20 @@ void APar_WriteFile(const char *ISObasemediafile,
       APar_DeriveNewPath(ISObasemediafile, temp_file_name, 0, "-temp-", NULL);
       temp_file = APar_OpenFile(temp_file_name, "wb");
 
-#if defined(__APPLE__)
       APar_SupplySelectiveTypeCreatorCodes(
           ISObasemediafile,
           temp_file_name,
           forced_suffix_type); // provide type/creator codes for ".mp4" for a
                                // fall-through randomly named temp files
-#endif
 
     } else {
       temp_file = APar_OpenFile(outfile, "wb");
 
-#if defined(__APPLE__)
       APar_SupplySelectiveTypeCreatorCodes(
           ISObasemediafile,
           outfile,
           forced_suffix_type); // provide type/creator codes for ".mp4" for a
                                // user-defined output file
-#endif
     }
   }
 
@@ -6447,23 +6252,6 @@ void APar_WriteFile(const char *ISObasemediafile,
                          // was meant to be the final destination
     fclose(source_file);
 
-#if defined(_WIN32) &&                                                         \
-    !defined(__CYGWIN__) /* native Windows requires removing the file first;   \
-                            rename() on POSIX does the removing automatically  \
-                            as needed */
-    if (IsUnicodeWinOS() && UnicodeOutputStatus == WIN32_UTF16) {
-      wchar_t *utf16_filepath =
-          Convert_multibyteUTF8_to_wchar(ISObasemediafile);
-
-      _wremove(utf16_filepath);
-
-      free(utf16_filepath);
-      utf16_filepath = NULL;
-    } else {
-      remove(ISObasemediafile);
-    }
-#endif
-
     int err = 0;
 
     if (forced_suffix_type != NO_TYPE_FORCING) {
@@ -6481,21 +6269,6 @@ void APar_WriteFile(const char *ISObasemediafile,
       originating_file = (char *)ISObasemediafile;
     }
 
-#if defined(_WIN32) && !defined(__CYGWIN__)
-    if (IsUnicodeWinOS() && UnicodeOutputStatus == WIN32_UTF16) {
-      wchar_t *utf16_filepath =
-          Convert_multibyteUTF8_to_wchar(originating_file);
-      wchar_t *temp_utf16_filepath =
-          Convert_multibyteUTF8_to_wchar(temp_file_name);
-
-      err = _wrename(temp_utf16_filepath, utf16_filepath);
-
-      free(utf16_filepath);
-      free(temp_utf16_filepath);
-      utf16_filepath = NULL;
-      temp_utf16_filepath = NULL;
-    } else
-#endif
     {
       err = rename(temp_file_name, originating_file);
     }

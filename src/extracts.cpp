@@ -294,13 +294,13 @@ void APar_ShowMPEG4VisualProfileInfo(TrackInfo *track_info) {
   } else if (mp4v_profile == 0xB4) {
     fprintf(stdout, "Advanced Coding Efficiency Profile, Level 4"); // 10110100
 
-    // Reserved 10110101 Ð 11000000
+    // Reserved 10110101 ï¿½ 11000000
   } else if (mp4v_profile == 0xC1) {
     fprintf(stdout, "Advanced Core Profile, Level 1"); // 11000001
   } else if (mp4v_profile == 0xC2) {
     fprintf(stdout, "Advanced Core Profile, Level 2"); // 11000010
 
-    // Reserved 11000011 Ð 11010000
+    // Reserved 11000011 ï¿½ 11010000
   } else if (mp4v_profile == 0xD1) {
     fprintf(stdout, "Advanced Scalable Texture, Level 1"); // 11010001
   } else if (mp4v_profile == 0xD2) {
@@ -1425,7 +1425,7 @@ void APar_ExtractTrackDetails(char *uint32_buffer,
   }
 
   // Encoder string; occasionally, it appears under stsd for a video track; it
-  // is typcally preceded by ' ²' (1st char is unprintable) or 0x01B2
+  // is typcally preceded by ' ï¿½' (1st char is unprintable) or 0x01B2
   if (track_info->contains_esds) {
     APar_TrackLevelInfo(track, "esds");
 
@@ -1496,11 +1496,7 @@ void APar_ExtractMovieDetails(char *uint32_buffer,
   }
 
   movie_info.seconds = (float)movie_info.duration / (float)movie_info.timescale;
-#if defined(_MSC_VER)
-  __int64 media_bits = (__int64)mdatData * 8;
-#else
   uint64_t media_bits = (uint64_t)mdatData * 8;
-#endif
   movie_info.simple_bitrate_calc =
       ((double)media_bits / movie_info.seconds) / 1000.0;
 
@@ -1516,17 +1512,6 @@ void APar_Print_TrackDetails(TrackInfo *track_info) {
     fprintf(stdout, "     %.2f kbp/s", (float)track_info->avg_bitrate / 1000.0);
   } else { // some ffmpeg encodings have avg_bitrate set to 0, but an inexact
            // max_bitrate - actually, their esds seems a mess to me
-#if defined(_MSC_VER)
-    fprintf(stdout,
-            "     %.2lf* kbp/s",
-            ((double)((__int64)track_info->sample_aggregate) /
-             ((double)((__int64)track_info->duration) /
-              (double)((__int64)movie_info.timescale))) /
-                1000.0 * 8);
-    fprintf(stdout,
-            "  %.3f sec",
-            (float)track_info->duration / (float)movie_info.timescale);
-#else
     fprintf(stdout,
             "     %.2lf* kbp/s",
             ((double)track_info->sample_aggregate /
@@ -1535,7 +1520,6 @@ void APar_Print_TrackDetails(TrackInfo *track_info) {
     fprintf(stdout,
             "  %.3f sec",
             (float)track_info->duration / (float)movie_info.timescale);
-#endif
   }
 
   if (track_info->track_codec == 0x6D703476) { // mp4v profile

@@ -50,65 +50,14 @@ void printBOM() {
   if (BOM_printed)
     return;
 
-#if defined(_WIN32) && !defined(__CYGWIN__)
-  if (UnicodeOutputStatus == WIN32_UTF16) {
-    APar_unicode_win32Printout(L"\xEF\xBB\xBF", "\xEF\xBB\xBF");
-  }
-#else
   fprintf(stdout, "\xEF\xBB\xBF"); // Default to output of a UTF-8 BOM
-#endif
 
   BOM_printed = true;
   return;
 }
 
-#if defined(_WIN32) && !defined(__CYGWIN__)
-void APar_unicode_win32Printout(
-    wchar_t *unicode_out,
-    char *
-        utf8_out) { // based on
-                    // http://blogs.msdn.com/junfeng/archive/2004/02/25/79621.aspx
-  // its possible that this isn't even available on windows95
-  DWORD dwBytesWritten;
-  DWORD fdwMode;
-  HANDLE outHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-  // ThreadLocale adjustment, resource loading, etc. is skipped
-  if ((GetFileType(outHandle) & FILE_TYPE_CHAR) &&
-      GetConsoleMode(outHandle, &fdwMode)) {
-    if (wcsncmp(unicode_out, L"\xEF\xBB\xBF", 3) !=
-        0) { // skip BOM when writing directly to the console
-      WriteConsoleW(
-          outHandle, unicode_out, wcslen(unicode_out), &dwBytesWritten, 0);
-    }
-  } else {
-    // writing out to a file. Everything will be written out in utf8 to the
-    // file.
-    fprintf(stdout, "%s", utf8_out);
-  }
-  return;
-}
-#endif
-
 void APar_fprintf_UTF8_data(const char *utf8_encoded_data) {
-#if defined(_WIN32) && !defined(__CYGWIN__)
-  if (GetVersion() & 0x80000000 || UnicodeOutputStatus == UNIVERSAL_UTF8) {
-    fprintf(stdout,
-            "%s",
-            utf8_encoded_data); // just printout the raw utf8 bytes (not
-                                // characters) under pre-NT windows
-  } else {
-    wchar_t *utf16_data = Convert_multibyteUTF8_to_wchar(utf8_encoded_data);
-    fflush(stdout);
-
-    APar_unicode_win32Printout(utf16_data, (char *)utf8_encoded_data);
-
-    fflush(stdout);
-    free(utf16_data);
-    utf16_data = NULL;
-  }
-#else
   fprintf(stdout, "%s", utf8_encoded_data);
-#endif
   return;
 }
 
@@ -146,32 +95,7 @@ void APar_SimplePrintUnicodeAssest(char *unicode_string,
     unsigned char *utf8_data = Convert_multibyteUTF16_to_UTF8(
         unicode_string, asset_length * 6, asset_length);
 
-#if defined(_WIN32) && !defined(__CYGWIN__)
-    if (GetVersion() & 0x80000000 ||
-        UnicodeOutputStatus ==
-            UNIVERSAL_UTF8) { // pre-NT or AP-utf8.exe (pish, thats my win98se,
-                              // and without unicows support convert utf16toutf8
-                              // and output raw bytes)
-      unsigned char *utf8_data = Convert_multibyteUTF16_to_UTF8(
-          unicode_string, asset_length * 6, asset_length - 14);
-      fprintf(stdout, "%s", utf8_data);
-
-      free(utf8_data);
-      utf8_data = NULL;
-
-    } else {
-      wchar_t *utf16_data = Convert_multibyteUTF16_to_wchar(
-          unicode_string, asset_length / 2, true);
-      // wchar_t* utf16_data = Convert_multibyteUTF16_to_wchar(unicode_string,
-      // (asset_length / 2) + 1, true);
-      APar_unicode_win32Printout(utf16_data, (char *)utf8_data);
-
-      free(utf16_data);
-      utf16_data = NULL;
-    }
-#else
     fprintf(stdout, "%s", utf8_data);
-#endif
 
     free(utf8_data);
     utf8_data = NULL;
@@ -765,7 +689,7 @@ void APar_Print_iTunesData(const char *path,
           artwork_count++;
 
         } else {
-          // converts iso8859 © in '©ART' to a 2byte utf8 © glyph; replaces
+          // converts iso8859 ï¿½ in 'ï¿½ART' to a 2byte utf8 ï¿½ glyph; replaces
           // libiconv conversion
           memset(twenty_byte_buffer, 0, sizeof(char) * 20);
           isolat1ToUTF8((unsigned char *)twenty_byte_buffer,
@@ -935,30 +859,7 @@ void APar_PrintUnicodeAssest(char *unicode_string,
     unsigned char *utf8_data = Convert_multibyteUTF16_to_UTF8(
         unicode_string, (asset_length - 13) * 6, asset_length - 14);
 
-#if defined(_WIN32) && !defined(__CYGWIN__)
-    if (GetVersion() & 0x80000000 ||
-        UnicodeOutputStatus ==
-            UNIVERSAL_UTF8) { // pre-NT or AP-utf8.exe (pish, thats my win98se,
-                              // and without unicows support convert utf16toutf8
-                              // and output raw bytes)
-      unsigned char *utf8_data = Convert_multibyteUTF16_to_UTF8(
-          unicode_string, (asset_length - 13) * 6, asset_length - 14);
-      fprintf(stdout, "%s", utf8_data);
-
-      free(utf8_data);
-      utf8_data = NULL;
-
-    } else {
-      wchar_t *utf16_data = Convert_multibyteUTF16_to_wchar(
-          unicode_string, (asset_length - 16) / 2, true);
-      APar_unicode_win32Printout(utf16_data, (char *)utf8_data);
-
-      free(utf16_data);
-      utf16_data = NULL;
-    }
-#else
     fprintf(stdout, "%s", utf8_data);
-#endif
 
     free(utf8_data);
     utf8_data = NULL;
@@ -1923,12 +1824,12 @@ void APar_PrintAtomicTree() {
       isolat1ToUTF8((unsigned char *)twenty_byte_buffer,
                     10,
                     (unsigned char *)thisAtom->uuid_ap_atomname,
-                    4); // converts iso8859 © in '©ART' to a 2byte utf8 © glyph
+                    4); // converts iso8859 ï¿½ in 'ï¿½ART' to a 2byte utf8 ï¿½ glyph
     } else {
       isolat1ToUTF8((unsigned char *)twenty_byte_buffer,
                     10,
                     (unsigned char *)thisAtom->AtomicName,
-                    4); // converts iso8859 © in '©ART' to a 2byte utf8 © glyph
+                    4); // converts iso8859 ï¿½ in 'ï¿½ART' to a 2byte utf8 ï¿½ glyph
     }
 
     strcpy(tree_padding, "");

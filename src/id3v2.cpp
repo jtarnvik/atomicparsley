@@ -119,11 +119,7 @@ void convert_to_syncsafe32(uint32_t in_uint, char *buffer) {
 
 uint8_t convert_to_syncsafeXX(uint64_t in_uint, char *buffer) {
   if
-#if defined(_MSC_VER)
-      (in_uint <= (uint64_t)34359738367)
-#else
       (in_uint <= 34359738367ULL)
-#endif
   {
     buffer[0] = (in_uint >> 28) & 0x7F;
     buffer[1] = (in_uint >> 21) & 0x7F;
@@ -131,11 +127,8 @@ uint8_t convert_to_syncsafeXX(uint64_t in_uint, char *buffer) {
     buffer[3] = (in_uint >> 7) & 0x7F;
     buffer[4] = (in_uint >> 0) & 0x7F;
     return 5;
-#if defined(_MSC_VER)
-  } else if (in_uint <= (uint64_t)4398046511103) {
-#else
   } else if (in_uint <= 4398046511103ULL) {
-#endif
+
     buffer[0] = (in_uint >> 35) & 0x7F;
     buffer[1] = (in_uint >> 28) & 0x7F;
     buffer[2] = (in_uint >> 21) & 0x7F;
@@ -143,11 +136,7 @@ uint8_t convert_to_syncsafeXX(uint64_t in_uint, char *buffer) {
     buffer[4] = (in_uint >> 7) & 0x7F;
     buffer[5] = (in_uint >> 0) & 0x7F;
     return 6;
-#if defined(_MSC_VER)
-  } else if (in_uint <= (uint64_t)562949953421311) {
-#else
   } else if (in_uint <= 562949953421311ULL) {
-#endif
     buffer[0] = (in_uint >> 42) & 0x7F;
     buffer[1] = (in_uint >> 35) & 0x7F;
     buffer[2] = (in_uint >> 28) & 0x7F;
@@ -156,11 +145,7 @@ uint8_t convert_to_syncsafeXX(uint64_t in_uint, char *buffer) {
     buffer[5] = (in_uint >> 7) & 0x7F;
     buffer[6] = (in_uint >> 0) & 0x7F;
     return 7;
-#if defined(_MSC_VER)
-  } else if (in_uint <= (uint64_t)72057594037927935) {
-#else
   } else if (in_uint <= 72057594037927935ULL) {
-#endif
     buffer[0] = (in_uint >> 49) & 0x7F;
     buffer[1] = (in_uint >> 42) & 0x7F;
     buffer[2] = (in_uint >> 35) & 0x7F;
@@ -170,12 +155,8 @@ uint8_t convert_to_syncsafeXX(uint64_t in_uint, char *buffer) {
     buffer[6] = (in_uint >> 7) & 0x7F;
     buffer[7] = (in_uint >> 0) & 0x7F;
     return 8;
-#if defined(_MSC_VER)
-  } else if (in_uint <= (uint64_t)9223372036854775807) {
-#else
   } else if (in_uint <= 9223372036854775807ULL) { // that is some hardcore
                                                   // lovin'
-#endif
     buffer[0] = (in_uint >> 56) & 0x7F;
     buffer[1] = (in_uint >> 49) & 0x7F;
     buffer[2] = (in_uint >> 42) & 0x7F;
@@ -445,13 +426,7 @@ void ListID3FrameIDstrings() {
       "  user defined url frame :     (url) [desc=(str)] [encoding]\n"
       "  file ID frame :              (owner) "
       "[uniqueID={\"randomUUIDstamp\",(str)}]\n"
-#if defined(__APPLE__)
       "  AudioCD ID frame :           disk(num)\n"
-#elif defined(__linux__)
-      "  AudioCD ID frame :           (/path)\n"
-#elif defined(_WIN32)
-      "  AudioCD ID frame :           (letter)\n"
-#endif
       "  described text frame :       (str) [desc=(str)] [encoding]\n"
       "  picture frame :              (/path) [desc=(str)] [mimetype=(str)] "
       "[imagetype=(hex)] [encoding]\n"
@@ -2393,17 +2368,7 @@ void APar_FrameDataPut(ID3v2Frame *thisFrame,
                               TE_LATIN1); // mimetype
     if (memcmp(adjunct_payload->filenameArg, "FILENAMESTAMP", 13) == 0) {
       const char *derived_filename = NULL;
-#if defined(_WIN32)
-      derived_filename = strrchr(frame_payload, '\\');
-#if defined(__CYGWIN__)
-      const char *derived_filename2 = strrchr(frame_payload, '/');
-      if (derived_filename2 > derived_filename) {
-        derived_filename = derived_filename2;
-      }
-#endif
-#else
       derived_filename = strrchr(frame_payload, '/');
-#endif
       if (derived_filename == NULL) {
         derived_filename = frame_payload;
       } else {
